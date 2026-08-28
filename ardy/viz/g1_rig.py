@@ -67,7 +67,11 @@ class G1MeshRig:
         self.skeleton = skeleton
         self.mesh_dir = mesh_dir
         self.color = color
-        self.mesh_handles: list[viser.SceneHandle] = []
+        # ``SceneNodeHandle`` is the public base class in the pinned
+        # ``viser==1.0.29`` release (the legacy Viser fork exposed no
+        # ``SceneHandle`` either). Keep this annotation on the public API
+        # without depending on a fork-only name.
+        self.mesh_handles: list[viser.SceneNodeHandle] = []
         self.mesh_items: list[dict[str, object]] = []
         self._defer_initial_visibility = True
         self._mujoco_to_ardy = np.array([[0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]], dtype=np.float64)

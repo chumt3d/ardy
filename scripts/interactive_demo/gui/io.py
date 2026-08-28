@@ -3,8 +3,32 @@
 
 """Interactive-demo GUI: IO tab (split from create_gui)."""
 
+from __future__ import annotations
+
+from typing import Any, Callable
+
 from ..common import *  # noqa: F401,F403
 from .instructions import KEYBOARD_SHORTCUTS_MD
+
+
+def _register_keyboard_handlers(
+    client: Any,
+    handler: Callable[[Any], None],
+) -> bool:
+    """Register keyboard callbacks when the selected Viser exposes them.
+
+    The official ``viser==1.0.29`` package does not include the keyboard-event
+    extension shipped by the legacy Viser fork. Returning ``False`` keeps the
+    optional demo usable and lets the caller disclose the unavailable shortcut
+    surface instead of failing during GUI setup.
+    """
+    on_keyboard_event = getattr(client.scene, "on_keyboard_event", None)
+    if on_keyboard_event is None:
+        return False
+
+    on_keyboard_event("keydown", debounce_ms=100)(handler)
+    on_keyboard_event("keyup", debounce_ms=100)(handler)
+    return True
 
 
 class GuiIOMixin:
@@ -499,8 +523,15 @@ class GuiIOMixin:
                     help_modal_holder[0] = modal
                     session.client.gui.add_markdown(KEYBOARD_SHORTCUTS_MD)
 
-        # Register the keyboard handler
-        client.scene.on_keyboard_event("keydown", debounce_ms=100)(handle_keyboard)
-        client.scene.on_keyboard_event("keyup", debounce_ms=100)(handle_keyboard)
+        # Keyboard events are an optional extension that exists in the former
+        # legacy Viser fork but is not part of the pinned official
+        # ``viser==1.0.29`` API. Keep the demo usable with the official
+        # package and make the disabled shortcut surface explicit rather than
+        # failing during GUI setup or silently dropping it.
+        if not _register_keyboard_handlers(client, handle_keyboard):
+            print(
+                "Keyboard shortcuts unavailable: viser==1.0.29 does not expose "
+                "scene.on_keyboard_event; the demo continues without them."
+            )
 
         # Create GUI elements dataclass

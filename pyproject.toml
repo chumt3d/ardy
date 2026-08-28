@@ -48,7 +48,7 @@ dependencies = [
 [project.optional-dependencies]
 # Interactive viser demo (scripts/run_demo.py) and text-encoder server (scripts/run_text_encoder_server.py)
 demo = [
-  "viser @ git+https://github.com/nv-tlabs/kimodo-viser.git@7c82ad8f8640bad9dff8ded5c5eee908eeb08f11",
+  "viser==1.0.29",
   "gradio>=6.8.0",
   "trimesh>=4.0",
   "pandas>=2.0",

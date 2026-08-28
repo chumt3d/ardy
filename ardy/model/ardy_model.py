@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Callable, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -413,6 +413,7 @@ class Ardy(nn.Module):
         progress_bar=tqdm,
         target_motion: Optional[torch.Tensor] = None,
         cfg_type: Optional[str] = None,
+        step_hook: Optional[Callable[[int], None]] = None,
     ) -> torch.Tensor:
         """Generate a single window of ``gen_horizon_len`` frames.
 
@@ -489,7 +490,7 @@ class Ardy(nn.Module):
             x[:, :history_token_end] = history_sequence[:, -history_token_end:]
         x[:, history_token_end:generation_token_end] = x_t
 
-        for i in progress_bar(indices):
+        for step_index, i in enumerate(progress_bar(indices), start=1):
             t = torch.tensor([i] * x_t.size(0), device=device)
             with torch.no_grad():
                 x = self.denoising_step(
@@ -514,6 +515,8 @@ class Ardy(nn.Module):
                     target_motion,
                     cfg_type=cfg_type,
                 )
+            if step_hook is not None:
+                step_hook(step_index)
 
         #  update the full history sequence
         if history_sequence is None:
@@ -716,6 +719,7 @@ class Ardy(nn.Module):
         init_history_sequence: Optional[torch.Tensor] = None,
         init_global_translation: Optional[torch.Tensor] = None,  # [B, 3]
         init_first_heading_angle: Optional[torch.Tensor] = None,  # [B,]
+        step_hook: Optional[Callable[[int], None]] = None,
     ) -> torch.Tensor:
         """Perform a single autoregressive generation step.
 
@@ -781,6 +785,7 @@ class Ardy(nn.Module):
             progress_bar=lambda iterable: iterable,
             target_motion=None,
             cfg_type=None,
+            step_hook=step_hook,
         )
 
         root_motion, latent_body_motion = self.hybrid.get_root_and_latent_body_motion_from_hybrid(history_sequence)
