@@ -12,6 +12,30 @@ from ardy.skeleton import SkeletonBase
 from .geometry import axis_angle_to_matrix, matrix_to_axis_angle
 
 
+def _convert_constraint_local_rots_to_skeleton(local_rot_mats: Tensor, skeleton: SkeletonBase) -> Tensor:
+    """Convert loaded local rotation matrices to match the skeleton's joint count.
+
+    Handles SOMA 30<->77: constraint files may have been saved with 30 or 77 joints (the released
+    benchmark bakes them on the 77-joint skeleton) while the session skeleton (e.g. from a SOMA30
+    model) uses the other joint count.
+    """
+    from ardy.skeleton import SOMASkeleton30, SOMASkeleton77
+
+    n_joints = local_rot_mats.shape[-3]
+    skeleton_joints = skeleton.nbjoints
+    if n_joints == skeleton_joints:
+        return local_rot_mats
+    if n_joints == 77 and skeleton_joints == 30 and isinstance(skeleton, SOMASkeleton30):
+        return skeleton.from_SOMASkeleton77(local_rot_mats)
+    if n_joints == 30 and skeleton_joints == 77 and isinstance(skeleton, SOMASkeleton77):
+        skel30 = SOMASkeleton30()
+        return skel30.to_SOMASkeleton77(local_rot_mats)
+    raise ValueError(
+        f"Constraint joint count ({n_joints}) does not match skeleton joint count "
+        f"({skeleton_joints}). Only SOMA 30<->77 conversion is supported."
+    )
+
+
 def create_pairs(tensor_A, tensor_B):
     pairs = torch.stack(
         (
@@ -98,11 +122,16 @@ class Root2DConstraintSet:
     def from_dict(cls, skeleton: SkeletonBase, dico: dict):
         device = skeleton.device
         root_2d_key = "root_2d" if "root_2d" in dico else "smooth_root_2d"
+        heading = torch.tensor(dico["global_root_heading"]) if "global_root_heading" in dico else None
+        if heading is not None and heading.ndim == 2 and heading.shape[-1] == 2:
+            # Kimodo-built benchmark suites store the heading as (cos, sin) pairs; this class
+            # keeps angles in radians internally.
+            heading = torch.atan2(heading[:, 1], heading[:, 0])
         return cls(
             skeleton,
             frame_indices=torch.tensor(dico["frame_indices"]),
             root_2d=torch.tensor(dico[root_2d_key], device=device),
-            global_root_heading=torch.tensor(dico["global_root_heading"]) if "global_root_heading" in dico else None,
+            global_root_heading=heading,
         )
 
 
@@ -204,8 +233,10 @@ class FullBodyConstraintSet:
     def from_dict(cls, skeleton: SkeletonBase, dico: dict):
         frame_indices = torch.tensor(dico["frame_indices"])
         device = skeleton.device
+        local_rot_mats = axis_angle_to_matrix(torch.tensor(dico["local_joints_rot"], device=device))
+        local_rot_mats = _convert_constraint_local_rots_to_skeleton(local_rot_mats, skeleton)
         global_joints_rots, global_joints_positions, _ = skeleton.fk(
-            axis_angle_to_matrix(torch.tensor(dico["local_joints_rot"], device=device)),
+            local_rot_mats,
             torch.tensor(dico["root_positions"], device=device),
         )
         root_2d = None
@@ -355,8 +386,10 @@ class EndEffectorConstraintSet:
     def from_dict(cls, skeleton: SkeletonBase, dico: dict):
         frame_indices = torch.tensor(dico["frame_indices"])
         device = skeleton.device
+        local_rot_mats = axis_angle_to_matrix(torch.tensor(dico["local_joints_rot"], device=device))
+        local_rot_mats = _convert_constraint_local_rots_to_skeleton(local_rot_mats, skeleton)
         global_joints_rots, global_joints_positions, _ = skeleton.fk(
-            axis_angle_to_matrix(torch.tensor(dico["local_joints_rot"], device=device)),
+            local_rot_mats,
             torch.tensor(dico["root_positions"], device=device),
         )
         root_2d = None
