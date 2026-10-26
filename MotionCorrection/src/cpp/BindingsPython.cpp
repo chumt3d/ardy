@@ -190,91 +190,6 @@ void correct_motion(
         endEffectorPins[3].contactMask.push_back((1.0f - fullPoseMask.at(i)) * rightFootMask.at(i));
     }
 
-    std::vector<Animation::ContactInfo> contactInfo(2);
-
-    auto footTranslation = Animation::JointLocalToGlobal(
-        joint_parents_vec,
-        right_foot_idx,
-        defaultPose
-    ).GetTranslation();
-
-    contactInfo[0].jointIndex = right_foot_idx;
-    contactInfo[0].hintOffset = Math::Vector(0.0f, 0.0f, 0.1f);
-    contactInfo[0].minHeight = footTranslation.GetY();
-
-    footTranslation = Animation::JointLocalToGlobal(
-        joint_parents_vec,
-        left_foot_idx,
-        defaultPose
-    ).GetTranslation();
-
-    contactInfo[1].jointIndex = left_foot_idx;
-    contactInfo[1].hintOffset = Math::Vector(0.0f, 0.0f, 0.1f);
-    contactInfo[1].minHeight = footTranslation.GetY();
-
-    auto& rContacts = contactInfo[0].contactMask;
-    auto& lContacts = contactInfo[1].contactMask;
-
-    rContacts.resize(fullPoseMask.size());
-    lContacts.resize(fullPoseMask.size());
-    for (int i = 0; i < fullPoseMask.size(); ++i)
-    {
-        // don't flag it as a contact if it's been masked:
-        rContacts[i] = rightFootMask.at(i) ? 0 : contacts.at(4 * i + 2);
-        lContacts[i] = leftFootMask.at(i) ? 0 : contacts.at(4 * i + 0);
-
-        // Flag the heel as a contact if the toe is a contact:
-        rContacts[i] = std::min((rightFootMask.at(i) ? 0 : contacts.at(4 * i + 3)) + rContacts[i], 1.0f);
-        lContacts[i] = std::min((leftFootMask.at(i) ? 0 : contacts.at(4 * i + 1)) + lContacts[i], 1.0f);
-    }
-
-    int left_toe_idx = -1;
-    int right_toe_idx = -1;
-    for(int i = 0; i < num_joints; ++i)
-    {
-        if(joint_parents_vec[i] == left_foot_idx)
-        {
-            left_toe_idx = i;
-        }
-        if(joint_parents_vec[i] == right_foot_idx)
-        {
-            right_toe_idx = i;
-        }
-    }
-
-    if(left_toe_idx != -1 && right_toe_idx != -1)
-    {
-        auto toeTranslation = Animation::JointLocalToGlobal(
-            joint_parents_vec,
-            right_toe_idx,
-            defaultPose
-        ).GetTranslation();
-
-        contactInfo.resize(4);
-        contactInfo[2].jointIndex = right_toe_idx;
-        contactInfo[2].contactType = Animation::kOneBone;
-        contactInfo[2].minHeight = toeTranslation.GetY();
-
-        contactInfo[3].jointIndex = left_toe_idx;
-        contactInfo[3].contactType = Animation::kOneBone;
-        contactInfo[3].minHeight = toeTranslation.GetY();
-
-        auto& rToeContacts = contactInfo[2].contactMask;
-        auto& lToeContacts = contactInfo[3].contactMask;
-
-        // fill up the ankle contacts:
-        rToeContacts.resize(fullPoseMask.size());
-        lToeContacts.resize(fullPoseMask.size());
-
-        for (int i = 0; i < fullPoseMask.size(); ++i)
-        {
-            // don't flag it as a contact if it's been masked:
-            rToeContacts[i] = rightFootMask.at(i) ? 0 : contacts.at(4 * i + 3);
-            lToeContacts[i] = leftFootMask.at(i) ? 0 : contacts.at(4 * i + 1);
-        }
-    }
-
-
     auto setTransforms = [gen_length, num_joints](
         std::vector< std::vector<Math::Transform> > &poses,
         const py::array_t<float> &rootTranslations,
@@ -326,13 +241,10 @@ void correct_motion(
         posesTarget,
         fullPoseMask_vec,
         rootMask_vec,
-        contactInfo,
         endEffectorPins,
         joint_parents_vec,
         defaultPose,
-        contact_threshold,
-        root_margin,
-        has_double_ankle_joints
+        root_margin
     );
 
     for (size_t f = 0; f < gen_length; ++f)

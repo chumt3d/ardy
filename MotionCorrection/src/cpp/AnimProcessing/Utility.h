@@ -34,8 +34,6 @@ namespace Animation
 
         // Extra info for TwoBoneIK
         Math::Vector hintOffset = Math::Vector::Zero;
-
-        float minHeight = 0.0f;
     };
 
     void CorrectMotion(
@@ -43,12 +41,9 @@ namespace Animation
         const std::vector< std::vector<Math::Transform> >& targetPoses,
         const std::vector<float>& mask,
         const std::vector<float>& rootMask,
-        const std::vector<ContactInfo>& contacts,
         const std::vector<ContactInfo>& endEffectorPins,
         const std::vector<int>& joint_parents_vec,
         const std::vector<Math::Transform>& defaultPose,
-        float contactThreshold,
-        float root_margin,
-        bool has_double_ankle_joints
+        float root_margin
     );
 }
