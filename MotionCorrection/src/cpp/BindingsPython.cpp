@@ -46,9 +46,18 @@ void correct_motion(
     int right_foot_idx,
     float contact_threshold,
     float root_margin,
-    bool has_double_ankle_joints
+    bool has_double_ankle_joints,
+    const std::vector<float>& contact_min_heights
 )
 {
+    if (!contact_min_heights.empty())
+    {
+        if (contact_min_heights.size() != 4)
+            throw std::runtime_error("correct_motion: contact_min_heights requires left ankle, right ankle, left toe, right toe");
+        for (const auto value : contact_min_heights)
+            if (!std::isfinite(value))
+                throw std::runtime_error("correct_motion: contact_min_heights must be finite");
+    }
     if(joint_parents.size() != joint_ref_translations.size())
     {
         throw std::runtime_error("correct_motion python bindings: joint_parents and joint_ref_translations must have the same size");
@@ -275,6 +284,18 @@ void correct_motion(
     }
 
 
+    if (!contact_min_heights.empty())
+    {
+        if (contactInfo.size() != 4)
+            throw std::runtime_error("correct_motion: material sole datum requires both ankle and toe contacts");
+        // Preserve the upstream default above, including its shared right-toe
+        // height. Explicit material data supplies each contact independently.
+        contactInfo[0].minHeight = contact_min_heights[1];
+        contactInfo[1].minHeight = contact_min_heights[0];
+        contactInfo[2].minHeight = contact_min_heights[3];
+        contactInfo[3].minHeight = contact_min_heights[2];
+    }
+
     auto setTransforms = [gen_length, num_joints](
         std::vector< std::vector<Math::Transform> > &poses,
         const py::array_t<float> &rootTranslations,
@@ -360,5 +381,16 @@ void correct_motion(
 
 PYBIND11_MODULE(_motion_correction, m) {
     m.doc() = "Motion Correction Python bindings";
-    m.def("correct_motion", &correct_motion);
+    m.def("correct_motion", &correct_motion,
+        py::arg("rootTranslations"), py::arg("jointRotations"),
+        py::arg("rootTranslationsTarget"), py::arg("jointRotationsTarget"),
+        py::arg("fullPoseMask"), py::arg("leftHandMask"), py::arg("rightHandMask"),
+        py::arg("leftFootMask"), py::arg("rightFootMask"), py::arg("rootMask"),
+        py::arg("contacts"), py::arg("joint_parents"),
+        py::arg("joint_ref_translations"), py::arg("joint_ref_rotations"),
+        py::arg("left_hand_idx"), py::arg("right_hand_idx"),
+        py::arg("left_foot_idx"), py::arg("right_foot_idx"),
+        py::arg("contact_threshold"), py::arg("root_margin"),
+        py::arg("has_double_ankle_joints"),
+        py::arg("contact_min_heights") = std::vector<float>{});
 }

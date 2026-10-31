@@ -21,6 +21,7 @@ def correct_motion(
     root_margin,
     working_rig,
     has_double_ankle_joints=False,
+    contact_min_heights=None,
 ):
     joint_names = [x.name for x in working_rig]
     joint_parents = [
@@ -92,6 +93,7 @@ def correct_motion(
             contact_threshold,
             root_margin,
             has_double_ankle_joints,
+            [] if contact_min_heights is None else contact_min_heights,
         )
 
         hipTranslations[b, :end_frame] = torch.from_numpy(
