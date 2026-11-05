@@ -259,7 +259,6 @@ Most useful flags:
 
 ## Related Humanoid Work at NVIDIA
 ARDY is closely related to several works from NVIDIA on humanoid motion and control:
-* [Kimodo](https://github.com/nv-tlabs/kimodo) - human motion generation model specializing in controllable _offline_ motion authoring.
 * [MotionBricks](https://nvlabs.github.io/motionbricks/) - real-time motion generation framework that specializes in fast and robust motion in-betweening.
 * [GEAR SONIC](https://github.com/NVlabs/GR00T-WholeBodyControl) - humanoid behavior foundation model for physical robots. ARDY can be used as a planner to generate motions given to SONIC.
 

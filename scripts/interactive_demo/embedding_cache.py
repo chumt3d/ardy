@@ -7,9 +7,8 @@ Wraps the demo's shared text encoder (built once in ``run_demo.py`` and reused a
 load — see ``loading.py``) so repeated or preset prompts skip re-encoding, both within a session and
 across demo restarts.
 
-Adapted from the pattern in ``kimodo/kimodo/demo/embedding_cache.py``, trimmed for this demo: no
-index.json bookkeeping, no contextvars-based session-cache layer, and no prewarm-marker files (a
-disk-cache hit already makes prewarm idempotent).
+The cache keeps only the mechanics this demo needs: no index bookkeeping, no contextvars-based
+session-cache layer, and no prewarm-marker files (a disk-cache hit already makes prewarm idempotent).
 """
 
 import hashlib
@@ -118,8 +117,7 @@ class EmbeddingCache:
         """
         if not texts:
             # Preserve whatever the wrapped encoder does with an empty
-            # batch instead of inventing our own (kimodo's equivalent path
-            # calls the shape-less ``torch.empty()``, which raises).
+            # batch instead of inventing our own empty-batch shape contract.
             return encoder(texts)
 
         arrays: list[Optional[np.ndarray]] = [None] * len(texts)
